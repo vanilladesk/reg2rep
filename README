@@ -1,1 +1,2 @@
-This project provides simple mechanism allowing you to register and un-register objects in centralized repository stored in Amazon AWS SimpleDB.
+This project provides simple mechanism allowing you to register and un-register objects in centralized repository.
+By default we are using Amazon AWS SimpleDB.
