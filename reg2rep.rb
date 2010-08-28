@@ -51,15 +51,25 @@ class R2Config
     @access_secret
   end
 
+  # log file
+  def log_file
+    @logfile
+  end
+
+  # verbose
+  def verbose
+    @verbose
+  end
+
   # load configuration from file
   def load(f)
     begin
       _cfg = ParseConfig.new(f)
     rescue Errno::ENOENT 
-      puts "Error: The config file #{f} was not found"
+      STDERR.puts "Error: The config file #{f} was not found"
       exit 2
     rescue Errno::EACCES 
-      puts "Error: The config file #{f} is not readable"
+      STDERR.puts "Error: The config file #{f} is not readable"
       exit 2
     end
 
@@ -68,16 +78,18 @@ class R2Config
     @address = _cfg.get_value('repository_address')
     @access_id = _cfg.get_value('repository_access_id')
     @access_secret = _cfg.get_value('repository_access_secret')
-    puts "load: #{@address}, #{@access_id}, #{@access_secret}"
+    @logfile = _cfg.get_value('log_file')
+    @verbose = _cfg.get_value('verbose_level')
   end
 
-  def initialize(f,a,i,s)
+  def initialize(f,a,i,s,l,v)
     load(f)
     # if specified, override specified settings
     @address = a if a != :nil
     @access_id = i if i != :nil
     @access_secret = s if s != :nil
-    puts "init: #{@address}, #{@access_id}, #{@access_secret}"
+    @logfile = l if l != :nil
+    @verbose = v if v != :nil
   end
 end
 
@@ -86,16 +98,19 @@ class R2Repo
 
   @last_domain = ""
   @repo_config = ""
-  @repo = ""
+  @repo = :nil
+  @logger = :nil
   
   def open_repo
     @repo = RightAws::SdbInterface.new(@repo_config.access_id,
                                        @repo_config.access_secret,
-                                       {:server => @repo_config.address})
+                                       {:server => @repo_config.address,
+                                        :logger => @logger})
   end
 
-  def initialize(cfg)
+  def initialize(cfg,log)
     @repo_config = cfg
+    @logger = log
     open_repo
   end
 
@@ -168,8 +183,20 @@ module AnalyzeCmd extend OptiFlagSet
 
   optional_flag "config" do
     alternate_forms "c"
-    description "Configuration file."
+    description "Configuration file. Default /etc/reg2rep.conf"
     default "/etc/reg2rep.conf"
+  end
+
+  optional_flag "logfile" do
+    alternate_forms "l"
+    description "Log file. Default STDERR."
+  end
+
+  optional_flag "verbose" do
+    alternate_forms "v"
+    description "Verbose level. Default 3 - warning."
+    default "4"
+    value_matches [ "verbose level should be <1..5>" , /^[1-5]$/ ]
   end
 
   optional_switch_flag "help"
@@ -207,6 +234,13 @@ def show_help
   puts "             the one specified in configuration file"
   puts " --secret  - secret key used to authenticate against repository "
   puts "             overrides the one stored in configuration file"
+  puts " --logfile - logfile. Default is STDERR."
+  puts " --verbose - verbose level. Default is 4."
+  puts "             1 - fatal errors"
+  puts "             2 - errors"
+  puts "             3 - warnings"
+  puts "             4 - info"
+  puts "             5 - debug"
   puts ""
 end
 
@@ -232,12 +266,14 @@ end
 
 begin
   VER = '0.1'
+  
   _cfg = R2Config.new(ARGV.flags.config, 
                       ARGV.flags.address? ? ARGV.flags.address : :nil,
                       ARGV.flags.id? ? ARGV.flags.id : :nil,
-                      ARGV.flags.secret? ? ARGV.flags.secret : :nil)
+                      ARGV.flags.secret? ? ARGV.flags.secret : :nil,
+                      ARGV.flags.logfile? ? ARGV.flags.logfile : :nil,
+                      ARGV.flags.verbose? ? ARGV.flags.verbose : :nil)
 
-  _repo = R2Repo.new(_cfg)
 
   begin
     if ARGV.flags.help?
@@ -245,13 +281,37 @@ begin
       exit 1
     end
 
+    if _cfg.log_file != :nil
+      _log = Logger.new(_cfg.log_file)
+    else
+      _log = Logger.new(STDERR)
+    end
+
+    _log.level = case _cfg.verbose
+      when 1 then Logger::FATAL
+      when 2 then Logger::ERROR
+      when 3 then Logger::WARNING
+      when 4 then Logger::INFO
+      when 5 then Logger::DEBUG
+      else Logger::INFO
+    end
+
+
+    _log.info("******** reg2rep #{VER} started")
+    _log.info("repository: #{_cfg.address}")
+    _log.info("access id: #{_cfg.access_id}")
+    _log.info("secret key: #{_cfg.access_secret}")
+
+    _repo = R2Repo.new(_cfg, _log)
+
     # command 'add' specified?
     if ARGV.flags.add?
       # we expect domain, item and attributes to be specified
       if ARGV.flags.add.length < 3
-        puts "Error: Arguments missing for command '--add'"
+        _log.error "Arguments missing for command '--add'"
         exit 1
       end
+      _log.info("adding item #{ARGV.flags.add[1]} to domain #{ARGV.flags.add[0]}")
       _repo.add(ARGV.flags.add[0], ARGV.flags.add[1], str2hash(ARGV.flags.add[2]))
     end
  
@@ -259,9 +319,10 @@ begin
     if ARGV.flags.delete?
       # we expect domain and item to be specified
       if ARGV.flags.delete.length < 2
-        puts "Error: Arguments missing for command '--delete'"
+        _log.error "Arguments missing for command '--delete'"
         exit 1
       end
+      _log.info("deleting item #{ARGV.flags.add[1]} from domain #{ARGV.flags.add[0]}")
       _repo.delete(ARGV.flags.delete[0], ARGV.flags.delete[1])
     end
 
@@ -269,9 +330,10 @@ begin
     if ARGV.flags.list?
       # we expect domain to be specified
       if ARGV.flags.delete.list.length < 1
-        puts "Error: Arguments missing for command '--list'"
+        _log.error "Arguments missing for command '--list'"
         exit 1
       end
+      _log.info("listing items in domain #{ARGV.flags.add[0]}")
       _repo.list(ARGV.flags.list.is_a? ? ARGV.flags.list[0] : ARGV.flags.list)
     end
 

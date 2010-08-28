@@ -1,0 +1,14 @@
+# Logfile created on 2010-08-28 13:02:24 +0200 by logger.rb/25413
+I, [2010-08-28T13:02:24.036551 #2313]  INFO -- : ******** reg2rep 0.1 started
+I, [2010-08-28T13:02:24.036624 #2313]  INFO -- : repository: sdb.eu-west-1.amazonaws.com
+I, [2010-08-28T13:02:24.036655 #2313]  INFO -- : access id: 1J7A04036JPZ02WGA3G2
+I, [2010-08-28T13:02:24.036692 #2313]  INFO -- : secret key: EvM5DQuD/ZaoZU6Yui+VBddt9IXhHqDQ1nzGTtZy
+I, [2010-08-28T13:02:24.036754 #2313]  INFO -- : New RightAws::SdbInterface using shared connections mode
+I, [2010-08-28T13:02:24.036796 #2313]  INFO -- : adding item item1 to domain test
+I, [2010-08-28T13:02:24.037341 #2313]  INFO -- : Opening new HTTPS connection to sdb.eu-west-1.amazonaws.com:443
+W, [2010-08-28T13:02:44.102833 #2313]  WARN -- : Rightscale::HttpConnection : request failure count: 1, exception: #<Timeout::Error: execution expired>
+I, [2010-08-28T13:02:44.102961 #2313]  INFO -- : Opening new HTTPS connection to sdb.eu-west-1.amazonaws.com:443
+W, [2010-08-28T13:03:04.128743 #2313]  WARN -- : Rightscale::HttpConnection : request failure count: 2, exception: #<Timeout::Error: execution expired>
+I, [2010-08-28T13:03:04.128851 #2313]  INFO -- : Opening new HTTPS connection to sdb.eu-west-1.amazonaws.com:443
+W, [2010-08-28T13:03:24.167817 #2313]  WARN -- : Rightscale::HttpConnection : request failure count: 3, exception: #<Timeout::Error: execution expired>
+I, [2010-08-28T13:03:24.167929 #2313]  INFO -- : Opening new HTTPS connection to sdb.eu-west-1.amazonaws.com:443
