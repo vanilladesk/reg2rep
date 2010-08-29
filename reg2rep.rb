@@ -102,12 +102,13 @@ class R2Config
 
   #----------------------------------
   def initialize(f,cmd_opt)
-    load(f)
+    
+    load(f) if not f.nil?
 
     # if specified, override specified settings
     @address = cmd_opt[:flg_address] if cmd_opt.has_key?(:flg_address)
-	@access_id = cmd_opt[:flg_id] if cmd_opt.has_key?(:flg_id)
-	@access_secret = cmd_opt[:flg_secret] if cmd_opt.has_key?(:flg_secret)
+    @access_id = cmd_opt[:flg_id] if cmd_opt.has_key?(:flg_id)
+    @access_secret = cmd_opt[:flg_secret] if cmd_opt.has_key?(:flg_secret)
     @logfile = cmd_opt[:flg_logfile] if cmd_opt.has_key?(:flg_logfile)
     @verbose = cmd_opt[:flg_verbose] if cmd_opt.has_key?(:flg_verbose)
   end
@@ -281,11 +282,10 @@ module AnalyzeCmd extend OptiFlagSet
   optional_flag "config" do
     alternate_forms "c"
     description "Configuration file. Default /etc/reg2rep.conf"
-    default "/etc/reg2rep.conf"
   end
 
   optional_flag "logfile" do
-    alternate_forms "l"
+    alternate_forms "o"
     description "Log file. Default STDERR."
   end
 
@@ -461,14 +461,15 @@ begin
   VER = '0.1'
 
   # create hash containing commandline options, if there are any  
+
   _cfg_params = []
   _cfg_params << [:flg_address, ARGV.flags.address] if ARGV.flags.address?
   _cfg_params << [:flg_id, ARGV.flags.id] if ARGV.flags.id?
   _cfg_params << [:flg_secret, ARGV.flags.secret] if ARGV.flags.secret?
   _cfg_params << [:flg_logfile, ARGV.flags.logfile] if ARGV.flags.logfile?
   _cfg_params << [:flg_verbose, ARGV.flags.verbose] if ARGV.flags.verbose?
-  
-  _cfg = R2Config.new(ARGV.flags.config, Hash[*_cfg_params])
+
+  _cfg = R2Config.new(ARGV.flags.config, Hash[*_cfg_params.flatten])
 
   begin
     if ARGV.flags.help?
@@ -487,6 +488,15 @@ begin
       else Logger::INFO
     end
 
+    # check configuration
+    if _cfg.access_id.nil? || _cfg.address.nil? || _cfg.access_secret.nil?
+      STDERR.puts "Error: Repository address and/or credentials are missing."
+      puts _cfg.address
+      puts _cfg.access_id
+      puts _cfg.access_secret
+      exit ERR_PARAMS
+    end
+ 
     # command 'add' specified?
     if ARGV.flags.add?
       # we expect domain, item and attributes to be specified
