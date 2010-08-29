@@ -141,46 +141,95 @@ class R2Repo
   # function allowing object registration in repository
   def add(domain, item, attributes)
 
+    _response = []
+
+    @logger.info("Adding #{item} to domain #{domain}")
+    @logger.debug("Attributes: #{attributes}")
+
     _new_domain = domain
 
     # do not try to create domain if you have worked with it last time already
     if @last_domain != _new_domain
       @last_domain = _new_domain
       @repo.create_domain(_new_domain) 
-	  begin
-        @repo.put_attributes(_new_domain,item,attributes)
-  	  rescue
-	    # errors are logged in logfile
-	    exit ERR_REPO
-	  end
+      begin
+        @repo.put_attributes(_new_domain, item, attributes)
+        @logger.debug(_response)
+        @logger.info("Item added")
+      rescue Exception => e
+        # errors are logged in logfile
+        @logger.error("Error occured: #{e.message}")
+        exit ERR_REPO
+      end
     end
+
+    _response
     
+  end
+
+  #----------------------------------
+  # function for updating existing record in registry
+  def update(domain, item, attributes)
+
+    _response = []
+
+    @logger.info("Updating #{item} in domain #{domain}")
+    @logger.debug("Attributes: #{attributes}")
+    begin
+      _response = @repo.put_attributes(domain,item,attributes)
+      @logger.debug(_response)
+      @logger.info("Item updated")
+    rescue Exception => e
+      # errors are logged in logfile
+      @logger.error("Error occured: #{e.message}")
+      exit ERR_REPO
+    end
+
+    _response
+
   end
 
   #----------------------------------
   # function allowing object un-registration from repository
   def delete(domain, item)
+
+    _response = []
+
     @logger.info("Deleting item #{item} from domain #{domain}")
-	begin
+    begin
       @repo.delete_attributes(domain,item)
-	rescue
-	  # errors are logged in logfile
-	  exit ERR_REPO
-	end
+      @logger.debug(_response)
+      @logger.info("Item deleted")
+    rescue Exception => e
+      # errors are logged in logfile
+      @logger.error("Error occured: #{e.message}")
+      exit ERR_REPO
+    end
+
+    _response
+
   end
 
   #-----------------------------------
   # function 
   def list(domain)
     _query = "select * from #{domain}"
+
     @logger.info("Listing all items from domain #{domain}")
-	@logger.info("Query: #{_query}")
-	begin
+    @logger.debug("Query: #{_query}")
+
+    begin
       _items = @repo.select(_query)
-	rescue
-	  # errors are logged in logfile
-	  exit ERR_REPO
-	end
+      @logger.debug(_items)
+      @logger.info("Items returned: #{_items.fetch(:items).length}")
+    rescue Exception => e
+      # errors are logged in logfile
+      @logger.error("Error occured: #{e.message}")
+      exit ERR_REPO
+    end
+
+    _items
+
   end
 
 end
@@ -341,7 +390,12 @@ def rs2table(rs)
     row.each_pair do |item, attrs|
 	  _r[0] = item
 	  attrs.each_pair do |k,v|
-	    _r[_a.index(k)] = v.flatten * ","
+            if v.kind_of? Array
+              #AWS SimpleDB is storing attribute changes in sequence
+ 	      _r[_a.index(k)] = v[v.length-1].to_s if v.length > 0
+            else
+              _r[_a.index(k)] = v.to_s
+            end
 	  end
 	end
 	_t << _r
@@ -365,7 +419,14 @@ def print_hash(rs, delim = '|')
     row.each_pair do |item, attrs|
 	  s << item << delim
 	  attrs.each_pair do |k,v|
-	    s << k << '=>' << v.flatten * "," << delim
+            
+	    s << k << '=>' 
+            if v.kind_of? Array
+              s << v[v.length-1].to_s if v.length > 0
+            else
+              s << v.to_s
+            end
+            s << delim
 	  end
 	end
 	STDOUT.puts(s)
@@ -385,6 +446,13 @@ def print_items(rs)
 	s = ""
   end
 
+end
+
+#****************************************
+
+def hide_secret(s)
+  _p = s.length/10
+  s.slice(0,_p) + "xxxxxx" + s.slice(s.length-_p,s.length)
 end
 
 #****************************************
@@ -426,7 +494,17 @@ begin
         STDERR.puts "Error: Arguments missing for command '--add'"
         exit ERR_PARAMS
       end
-	end
+    end
+
+    # command 'update' specified?
+    if ARGV.flags.update?
+      # we expect domain, item and attributes to be specified
+      if not ARGV.flags.update.kind_of? Array || ARGV.flags.update.length < 3
+        STDERR.puts "Error: Arguments missing for command '--update'"
+        exit ERR_PARAMS
+      end
+    end
+
 
     # command 'delete' specified
     if ARGV.flags.delete?
@@ -435,7 +513,7 @@ begin
         STDERR.puts "Error: Arguments missing for command '--delete'"
         exit ERR_PARAMS
       end
-	end
+    end
 
     # command 'list' specified
     if ARGV.flags.list?
@@ -444,37 +522,41 @@ begin
         STDERR.puts "Error: Arguments missing for command '--list'"
         exit ERR_PARAMS
       end
-	end
+    end
 
     if _cfg.log_file != :nil
-	  _log.close
-      _log = Logger.new(_cfg.log_file)
+      begin
+        _log = Logger.new(_cfg.log_file)
+      rescue
+        STDERR.puts "Error: Not possible to create/open log file #{_cfg.log_file}"
+        exit ERR_PARAMS
+      end
     end
 
 	
     _log.info("******** reg2rep #{VER} started")
     _log.info("repository: #{_cfg.address}")
     _log.info("access id: #{_cfg.access_id}")
-    _log.info("secret key: #{_cfg.access_secret}")
-	_log.info("verbose: #{_cfg.verbose}")
+    _log.info("secret key: " + hide_secret(_cfg.access_secret))
+    _log.info("verbose: #{_cfg.verbose}")
 
     _repo = R2Repo.new(_cfg, _log)
 
     # command 'add' specified?
     if ARGV.flags.add?
-      _log.info("adding item #{ARGV.flags.add[1]} to domain #{ARGV.flags.add[0]}")
       _result = _repo.add(ARGV.flags.add[0], ARGV.flags.add[1], str2hash(ARGV.flags.add[2]))
-	  _log.debug(_result)
-	  _log.info("item added")
       STDOUT.puts("Item #{ARGV.flags.add[1]} added to domain #{ARGV.flags.add[0]}")	  
+    end
+
+     # command 'update' specified?
+    if ARGV.flags.update?
+      _result = _repo.update(ARGV.flags.update[0], ARGV.flags.update[1], str2hash(ARGV.flags.update[2]))
+      STDOUT.puts("Item #{ARGV.flags.update[1]} updated in domain #{ARGV.flags.update[0]}")	  
     end
  
     # command 'delete' specified
     if ARGV.flags.delete?
-      _log.info("deleting item #{ARGV.flags.delete[1]} from domain #{ARGV.flags.delete[0]}")
       _result = _repo.delete(ARGV.flags.delete[0], ARGV.flags.delete[1])
-	  _log.debug(_result)
-	  _log.info("item deleted")
 	  STDOUT.puts("Item #{ARGV.flags.delete[1]} deleted from domain #{ARGV.flags.delete[0]}")
     end
 
@@ -482,8 +564,6 @@ begin
     if ARGV.flags.list?
       _log.info("listing items in domain #{ARGV.flags.list[0]} showing #{ARGV.flags.list[1]}")
       _result = _repo.list(ARGV.flags.list[0])
-	  _log.debug(_result)
-	  _log.info("list created")
 	  
 	  if ARGV.flags.list[1] == "items"
 	    print_items(_result.fetch(:items))
@@ -493,8 +573,7 @@ begin
 	    print_hash(_result.fetch(:items))
 	  end
     end
-
-	_log.close
+    _log.close
 	
   end
 end
