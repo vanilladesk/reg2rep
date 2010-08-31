@@ -1,4 +1,4 @@
-#! /bin/ruby
+#! /usr/ruby
 #################################
 # 
 # Reg2Rep is a tool allowing you to register/un-register 

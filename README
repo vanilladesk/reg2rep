@@ -1,2 +1,4 @@
-This project provides simple mechanism allowing you to register and un-register objects in centralized repository.
-By default we are using Amazon AWS SimpleDB.
+Reg2Rep provides simple mechanism allowing you to register and un-register objects in centralized repository.
+It uses Amazon AWS SimpleDB by default.
+
+(c) 2010 Vanilladesk Ltd.
