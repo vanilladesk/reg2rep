@@ -1,4 +1,4 @@
-#! /usr/ruby
+#!/usr/ruby
 #################################
 # 
 # Reg2Rep is a tool allowing you to register/un-register 
@@ -9,7 +9,8 @@
 # - right_aws
 # - right_http_connection
 #
-# (c) 2010 Vanilladesk Ltd.
+# Copyright (c) 2010 Vanilladesk Ltd. http://www.vanilladesk.com
+# script repository: http://github.com/vanilladesk/reg2rep
 #
 #################################
 
@@ -436,15 +437,19 @@ def print_hash(rs, delim = '|')
 end
 
 #****************************************
-def print_items(rs)
+def print_items(rs, format = :one_per_line)
   s = ""
   rs.each do |row| 
     row.each_pair do |item, attrs|
 	  s << item
+	  s << "," if format == :multiline
 	end
-	STDOUT.puts(s)
-	s = ""
+	if format == :one_per_line
+	  STDOUT.puts(s)
+	  s = ""
+	end
   end
+  STDOUT.puts(s) if format == :flat
 
 end
 
@@ -576,7 +581,9 @@ begin
       _result = _repo.list(ARGV.flags.list[0])
 	  
 	  if ARGV.flags.list[1] == "items"
-	    print_items(_result.fetch(:items))
+	    print_items(_result.fetch(:items),:one_per_line)
+	  elsif ARGV.flags.list[1] == "items-flat"
+	    print_items(_result.fetch(:items),:single_line)
 	  elsif ARGV.flags.list[1] == "table"
 	    print_table(rs2table(_result.fetch(:items)))
 	  else
