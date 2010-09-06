@@ -61,6 +61,12 @@ echo "-------------------------------"
 echo "Showing inserted items as hash"
 ruby reg2rep.rb -o ~/reg2rep.log --list $DBDOMAIN hash --id $AWS_ACCESS_KEY --secret $AWS_SECRET_KEY --address $AWS_ADDRESS
 
+# show items using custom query
+echo "-------------------------------"
+echo "Showing subset of inserted items using custom query"
+ruby reg2rep.rb -o ~/reg2rep.log --list $DBDOMAIN hash --query "select key1 from %domain% where key3 = 'value3'" --id $AWS_ACCESS_KEY --secret $AWS_SECRET_KEY --address $AWS_ADDRESS 
+
+exit 0
 
 # delete two items
 echo "-------------------------------"
