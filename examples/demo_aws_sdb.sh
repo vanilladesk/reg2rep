@@ -17,7 +17,7 @@ AWS_ACCESS_KEY="$1"
 AWS_SECRET_KEY="$2"
 AWS_ADDRESS="$3"
 
-DBDOMAIN="sdb_test"
+DBDOMAIN="sdb_test22"
 
 if [ ! "$AWS_ACCESS_KEY" ] || [ ! "$AWS_SECRET_KEY" ]; then
   echo "Error: Parameters missing."
