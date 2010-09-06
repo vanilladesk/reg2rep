@@ -8,9 +8,12 @@
 # This script depends on following gems:
 # - right_aws
 # - right_http_connection
+# - optiflag
+# - parseconfig
 #
 # Copyright (c) 2010 Vanilladesk Ltd. http://www.vanilladesk.com
-# script repository: http://github.com/vanilladesk/reg2rep
+#
+# Repository: http://github.com/vanilladesk/reg2rep
 #
 #################################
 
@@ -45,35 +48,14 @@ end
 class R2Config
   
   #-----------------------------------
-  # repository address (e.g. EC2 endpoint)
-  def address
-    @address
-  end
-
-  #-----------------------------------
-  # repository access id (e.g. EC2 access key or other repo login name)
-  def access_id
-    @access_id
-  end
-
-  #-----------------------------------
-  # repository access secret (e.g. EC2 secret key or other repo password)
-  def access_secret
-    @access_secret
-  end
-
-  #------------------------------------
-  # log file
-  def log_file
-    @logfile
-  end
-
-  # ----------------------------------
-  # verbose
-  def verbose
-    @verbose
-  end
-
+  
+  attr_accessor :address		# repository address (e.g. EC2 endpoint)
+  attr_accessor :access_id		# repository access id (e.g. EC2 access key or other repo login name)
+  attr_accessor :access_secret	# repository access secret (e.g. EC2 secret key or other repo password)
+  attr_accessor :log_file		# log file
+  attr_accessor :verbose		# verbose level
+  attr_accessor :query			# query to be used for getting the list of items
+  
   #------------------------------------
   # load configuration from file
   def load(f)
@@ -98,6 +80,10 @@ class R2Config
 
     @verbose = _cfg.get_value('verbose_level')
 	@verbose = '4' if @verbose.nil?
+
+    @query = _cfg.get_value('query')
+	@query = 'select * from %domain%' if @query.nil?
+
 	
   end
 
@@ -112,6 +98,7 @@ class R2Config
     @access_secret = cmd_opt[:flg_secret] if cmd_opt.has_key?(:flg_secret)
     @logfile = cmd_opt[:flg_logfile] if cmd_opt.has_key?(:flg_logfile)
     @verbose = cmd_opt[:flg_verbose] if cmd_opt.has_key?(:flg_verbose)
+	@query = cmd_opt[:flg_query] if cmd_opt.has_key?(:flg_query)
   end
 end
 
@@ -214,8 +201,8 @@ class R2Repo
 
   #-----------------------------------
   # function 
-  def list(domain)
-    _query = "select * from #{domain}"
+  def list(domain,query=@repo_config.query)
+    _query = query.gsub(/%domain%/,domain)
 
     @logger.info("Listing all items from domain #{domain}")
     @logger.debug("Query: #{_query}")
@@ -285,6 +272,11 @@ module AnalyzeCmd extend OptiFlagSet
     description "Configuration file. Default /etc/reg2rep.conf"
   end
 
+  optional_flag "query" do
+    alternate_forms "q"
+    description "Query to get list of items from the domain. Default 'select * from <domain>'."
+  end
+  
   optional_flag "logfile" do
     alternate_forms "o"
     description "Log file. Default STDERR."
@@ -307,67 +299,94 @@ def show_help
   puts "reg2rep v"+VER+" - Register to repository - (c) 2010 Vanilladesk Ltd."
   puts ""
   puts "Usage: reg2rep <command> <command_params> [options]" 
-  puts "Command can be"
-  puts " --add     - add an item with specified attributes to domain"
-  puts "             requires <domain> <item> <attributes>"
-  puts " --delete  - delete specified item from domain"
-  puts "             requires <domain> <item>"
-  puts " --list    - list all items in domain"
-  puts "             requires <domain> <type>"
-  puts "             <type> can be one of: items, table, hash"
-  puts " --update  - update attribute(s) of an item in domain"
-  puts "             requires <domain> <item> <attributes>"
-  puts " --help    - show this help"
+  puts ""
+  puts "Commands:"
+  puts " --add     - Add an item with specified attributes to domain."
+  puts "             Requires <domain> <item> <attributes>"
+  puts " --delete  - Delete specified item from domain."
+  puts "             Requires <domain> <item>"
+  puts " --list    - List all items in domain."
+  puts "             Requires <domain> <type>"
+  puts "             <type> can be one of: items, table, hash, items-flat"
+  puts " --update  - Update attribute(s) of an item in domain."
+  puts "             Requires <domain> <item> <attributes>"
+  puts " --help    - Show this help"
   puts ""
   puts "Command parameters:"
-  puts " domain    - domain name 'table name'"
-  puts " item      - item name 'record identifier'"
-  puts " attributes- list of attribute pairs separated by semi-colon ';'"
+  puts " domain    - Domain name 'table name'"
+  puts " item      - Item name 'record identifier'"
+  puts " attributes- List of attribute pairs separated by semi-colon ';'"
   puts "             'column values'"
   puts ""
   puts "Options:"
-  puts " --config  - repository configuration file"
-  puts " --address - repository address - overrides the one specified in"
-  puts "             configuration file"
-  puts " --id      - access id used to identify against repository - overrides"
-  puts "             the one specified in configuration file"
-  puts " --secret  - secret key used to authenticate against repository "
-  puts "             overrides the one stored in configuration file"
-  puts " --logfile - logfile. Default is STDERR."
-  puts " --verbose - verbose level. Default is 4."
+  puts " --config  - Repository configuration file."
+  puts " --address - Repository address."
+  puts " --id      - Access id/login used to identify against repository"
+  puts " --secret  - Secret key/password used to authenticate against repository."
+  puts " --query   - Query to obtain list of items - meaningful with --list 
+  puts "             command only, ignored otherwise."
+  puts "             Default query is 'select * from %domain%'. Macro %domain%,"
+  puts "             if used, will be replaced with provided domain name."
+  puts " --logfile - Logfile. Default is STDERR."
+  puts " --verbose - Verbose level. Default is 4."
   puts "             1 - fatal errors"
   puts "             2 - errors"
   puts "             3 - warnings"
   puts "             4 - info"
   puts "             5 - debug"
   puts ""
+  puts "Note: All options specified as command line option override the same"
+  puts "      options specified in configuration file." 
+  puts ""
 end
 
 #****************************************
-# extend class Array by adding method "to_h" for conversion
-# of an array to hash
+# extend class Array by adding method "to_h" for 
 
 class Array
   def to_h
-    arr = self.dup
+    # conversion of an array to hash
+	
+    _arr = self.dup
+	
     #check if we have key-value pairs
-    if arr.size % 2 == 0
-        Hash[*arr]
+    if _arr.size % 2 == 0
+        Hash[*_arr]
     else
-        Hash[*arr << nil]
+        Hash[*_arr << nil]
     end
   end
 end
 
 #****************************************
-# function for converting special string to hash
+# Extend class String
 
-def str2hash(s)
-  # it is assumed that 's' is formatted as follows:
-  # 'key1:value1;key2:value2...'
-  a = []
-  s.split(';').each{|ss| a << ss.split(':')}
-  a.flatten.to_h
+class String
+
+  def to_h
+    # Conversion of a string to a hash.
+    # It is assumes that string is formatted as follows: 'key1:value1;key2:value2...'
+
+    _a = []
+	_s = self.dup
+	
+    _s.split(';').each{|ss| _a << ss.split(':')}
+    _a.flatten.to_h
+	
+  end
+  
+  #---------------------
+  
+  def to_secret(c = '*')
+    # ReplacesHides middle 80% of a string with specified character
+	
+	_s = self.dup
+    _p = _s.length/10
+	
+    _s.slice(0, _p) + "".ljust(c, _s.length-(2*p)) + _s.slice(_s.length - _p, _s.length)
+	
+  end
+  
 end
 
 #****************************************
@@ -455,15 +474,8 @@ end
 
 #****************************************
 
-def hide_secret(s)
-  _p = s.length/10
-  s.slice(0,_p) + "xxxxxx" + s.slice(s.length-_p,s.length)
-end
-
-#****************************************
-
 begin
-  VER = '0.1'
+  VER = '1.0.0'
 
   # create hash containing commandline options, if there are any  
 
@@ -473,6 +485,7 @@ begin
   _cfg_params << [:flg_secret, ARGV.flags.secret] if ARGV.flags.secret?
   _cfg_params << [:flg_logfile, ARGV.flags.logfile] if ARGV.flags.logfile?
   _cfg_params << [:flg_verbose, ARGV.flags.verbose] if ARGV.flags.verbose?
+  _cfg_params << [:flg_query, ARGV.flags.query] if ARGV.flags.query?
 
   _cfg = R2Config.new(ARGV.flags.config, Hash[*_cfg_params.flatten])
 
@@ -496,9 +509,6 @@ begin
     # check configuration
     if _cfg.access_id.nil? || _cfg.address.nil? || _cfg.access_secret.nil?
       STDERR.puts "Error: Repository address and/or credentials are missing."
-      puts _cfg.address
-      puts _cfg.access_id
-      puts _cfg.access_secret
       exit ERR_PARAMS
     end
  
@@ -519,7 +529,6 @@ begin
         exit ERR_PARAMS
       end
     end
-
 
     # command 'delete' specified
     if ARGV.flags.delete?
@@ -547,25 +556,24 @@ begin
         exit ERR_PARAMS
       end
     end
-
 	
     _log.info("******** reg2rep #{VER} started")
     _log.info("repository: #{_cfg.address}")
     _log.info("access id: #{_cfg.access_id}")
-    _log.info("secret key: " + hide_secret(_cfg.access_secret))
+    _log.info("secret key: " + _cfg.access_secret.to_secret))
     _log.info("verbose: #{_cfg.verbose}")
 
     _repo = R2Repo.new(_cfg, _log)
 
     # command 'add' specified?
     if ARGV.flags.add?
-      _result = _repo.add(ARGV.flags.add[0], ARGV.flags.add[1], str2hash(ARGV.flags.add[2]))
+      _result = _repo.add(ARGV.flags.add[0], ARGV.flags.add[1], ARGV.flags.add[2].to_h)
       STDOUT.puts("Item #{ARGV.flags.add[1]} added to domain #{ARGV.flags.add[0]}")	  
     end
 
      # command 'update' specified?
     if ARGV.flags.update?
-      _result = _repo.update(ARGV.flags.update[0], ARGV.flags.update[1], str2hash(ARGV.flags.update[2]))
+      _result = _repo.update(ARGV.flags.update[0], ARGV.flags.update[1], ARGV.flags.update[2].to_h)
       STDOUT.puts("Item #{ARGV.flags.update[1]} updated in domain #{ARGV.flags.update[0]}")	  
     end
  
@@ -578,7 +586,7 @@ begin
     # command 'list' specified
     if ARGV.flags.list?
       _log.info("listing items in domain #{ARGV.flags.list[0]} showing #{ARGV.flags.list[1]}")
-      _result = _repo.list(ARGV.flags.list[0])
+      _result = _repo.list(ARGV.flags.list[0],ARGV.flags.query)
 	  
 	  if ARGV.flags.list[1] == "items"
 	    print_items(_result.fetch(:items),:one_per_line)
@@ -590,6 +598,7 @@ begin
 	    print_hash(_result.fetch(:items))
 	  end
     end
+	
     _log.close
 	
   end
