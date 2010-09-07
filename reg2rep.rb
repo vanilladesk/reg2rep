@@ -74,31 +74,30 @@ class R2Config
     @address = _cfg.get_value('repository_address')
     @access_id = _cfg.get_value('repository_access_id')
     @access_secret = _cfg.get_value('repository_access_secret')
-
-    @logfile = _cfg.get_value('log_file')
-	@logfile = "~/reg2rep.log" if @logfile.nil?
-
+    @log_file = _cfg.get_value('log_file')
     @verbose = _cfg.get_value('verbose_level')
-	@verbose = '4' if @verbose.nil?
-
     @query = _cfg.get_value('query')
-	@query = 'select * from %domain%' if @query.nil?
-
 	
   end
 
   #----------------------------------
   def initialize(f,cmd_opt)
-    
+
+    # load configuration from a file
     load(f) if not f.nil?
+
+    # set defaults if not set in configuration file
+    @verbose = '4' if @verbose.nil?
+    @query = 'select * from %domain%' if @query.nil?
 
     # if specified, override specified settings
     @address = cmd_opt[:flg_address] if cmd_opt.has_key?(:flg_address)
     @access_id = cmd_opt[:flg_id] if cmd_opt.has_key?(:flg_id)
     @access_secret = cmd_opt[:flg_secret] if cmd_opt.has_key?(:flg_secret)
-    @logfile = cmd_opt[:flg_logfile] if cmd_opt.has_key?(:flg_logfile)
+    @log_file = cmd_opt[:flg_logfile] if cmd_opt.has_key?(:flg_logfile)
     @verbose = cmd_opt[:flg_verbose] if cmd_opt.has_key?(:flg_verbose)
-	@query = cmd_opt[:flg_query] if cmd_opt.has_key?(:flg_query)
+    @query = cmd_opt[:flg_query] if cmd_opt.has_key?(:flg_query)
+
   end
 end
 
@@ -142,7 +141,7 @@ class R2Repo
       @last_domain = _new_domain
       @repo.create_domain(_new_domain) 
       begin
-        @repo.put_attributes(_new_domain, item, attributes)
+        @repo.put_attributes(_new_domain, item, attributes, true)
         @logger.debug(_response)
         @logger.info("Item added")
       rescue Exception => e
@@ -165,7 +164,7 @@ class R2Repo
     @logger.info("Updating #{item} in domain #{domain}")
     @logger.debug("Attributes: #{attributes}")
     begin
-      _response = @repo.put_attributes(domain,item,attributes)
+      _response = @repo.put_attributes(domain, item, attributes, true)
       @logger.debug(_response)
       @logger.info("Item updated")
     rescue Exception => e
@@ -201,8 +200,9 @@ class R2Repo
 
   #-----------------------------------
   # function 
-  def list(domain,query=@repo_config.query)
-    _query = query.gsub(/%domain%/,domain)
+  def list(domain, query = @repo_config.query)
+    query = @repo_config.query if query.nil?
+    _query = query.gsub(/%domain%/, domain)
 
     @logger.info("Listing all items from domain #{domain}")
     @logger.debug("Query: #{_query}")
@@ -218,6 +218,27 @@ class R2Repo
     end
 
     _items
+
+  end
+
+  #----------------------------------
+  # function allowing object un-registration from repository
+  def deletedomain(domain)
+
+    _response = []
+
+    @logger.info("Deleting domain #{domain}")
+    begin
+      @repo.delete_domain(domain)
+      @logger.debug(_response)
+      @logger.info("Domain deleted")
+    rescue Exception => e
+      # errors are logged in logfile
+      @logger.error("Error occured: #{e.message}")
+      exit ERR_REPO
+    end
+
+    _response
 
   end
 
@@ -244,6 +265,12 @@ module AnalyzeCmd extend OptiFlagSet
     alternate_forms "d"
     description "Delete specified item from a domain."
     arity 2 # we expect <domain> <item>
+  end
+
+  optional_flag "deletedomain" do
+    alternate_forms "dd"
+    description "Delete specified domain."
+    arity 1 # we expect <domain>
   end
 
   optional_flag "list" do
@@ -301,39 +328,41 @@ def show_help
   puts "Usage: reg2rep <command> <command_params> [options]" 
   puts ""
   puts "Commands:"
-  puts " --add     - Add an item with specified attributes to domain."
-  puts "             Requires <domain> <item> <attributes>"
-  puts " --delete  - Delete specified item from domain."
-  puts "             Requires <domain> <item>"
-  puts " --list    - List all items in domain."
-  puts "             Requires <domain> <type>"
-  puts "             <type> can be one of: items, table, hash, items-flat"
-  puts " --update  - Update attribute(s) of an item in domain."
-  puts "             Requires <domain> <item> <attributes>"
-  puts " --help    - Show this help"
+  puts " --add            - Add an item with specified attributes to a domain."
+  puts "                    Requires <domain> <item> <attributes>"
+  puts " --delete         - Delete specified item from a domain."
+  puts "                    Requires <domain> <item>"
+  puts " --deletedomain   - Delete specified domain."
+  puts "                    Requires <domain>"
+  puts " --list           - List all items in domain."
+  puts "                    Requires <domain> <type>"
+  puts "                    <type> can be one of: items, table, hash, items-flat"
+  puts " --update         - Update attribute(s) of an item in domain."
+  puts "                    Requires <domain> <item> <attributes>"
+  puts " --help           - Show this help"
   puts ""
   puts "Command parameters:"
-  puts " domain    - Domain name 'table name'"
-  puts " item      - Item name 'record identifier'"
-  puts " attributes- List of attribute pairs separated by semi-colon ';'"
-  puts "             'column values'"
+  puts " domain           - Domain name 'table name'"
+  puts " item             - Item name 'record identifier'"
+  puts " attributes       - List of attribute pairs separated by semi-colon ';'"
+  puts "                    'column values'"
   puts ""
   puts "Options:"
-  puts " --config  - Repository configuration file."
-  puts " --address - Repository address."
-  puts " --id      - Access id/login used to identify against repository"
-  puts " --secret  - Secret key/password used to authenticate against repository."
-  puts " --query   - Query to obtain list of items - meaningful with --list 
-  puts "             command only, ignored otherwise."
-  puts "             Default query is 'select * from %domain%'. Macro %domain%,"
-  puts "             if used, will be replaced with provided domain name."
-  puts " --logfile - Logfile. Default is STDERR."
-  puts " --verbose - Verbose level. Default is 4."
-  puts "             1 - fatal errors"
-  puts "             2 - errors"
-  puts "             3 - warnings"
-  puts "             4 - info"
-  puts "             5 - debug"
+  puts " --config         - Repository configuration file."
+  puts " --address        - Repository address."
+  puts " --id             - Access id/login used to identify against repository"
+  puts " --secret         - Secret key/password used to authenticate against repository."
+  puts " --query          - Query to obtain list of items - meaningful with --list" 
+  puts "                    command only, ignored otherwise."
+  puts "                    Default query is 'select * from %domain%'. Macro %domain%,"
+  puts "                    if used, will be replaced with provided domain name."
+  puts " --logfile        - Logfile. Default is STDERR."
+  puts " --verbose        - Verbose level. Default is 4."
+  puts "                    1 - fatal errors"
+  puts "                    2 - errors"
+  puts "                    3 - warnings"
+  puts "                    4 - info"
+  puts "                    5 - debug"
   puts ""
   puts "Note: All options specified as command line option override the same"
   puts "      options specified in configuration file." 
@@ -383,7 +412,7 @@ class String
 	_s = self.dup
     _p = _s.length/10
 	
-    _s.slice(0, _p) + "".ljust(c, _s.length-(2*p)) + _s.slice(_s.length - _p, _s.length)
+    _s.slice(0, _p) + "".ljust(_s.length-(2*_p), c) + _s.slice(_s.length - _p, _s.length)
 	
   end
   
@@ -539,7 +568,7 @@ begin
       end
     end
 
-    # command 'list' specified
+   # command 'list' specified
     if ARGV.flags.list?
       # we expect domain to be specified
       if not ARGV.flags.list.kind_of? Array || ARGV.flags.list.length < 2
@@ -548,7 +577,7 @@ begin
       end
     end
 
-    if _cfg.log_file != :nil
+    if not _cfg.log_file.nil?
       begin
         _log = Logger.new(_cfg.log_file)
       rescue
@@ -560,7 +589,7 @@ begin
     _log.info("******** reg2rep #{VER} started")
     _log.info("repository: #{_cfg.address}")
     _log.info("access id: #{_cfg.access_id}")
-    _log.info("secret key: " + _cfg.access_secret.to_secret))
+    _log.info("secret key: " + _cfg.access_secret.to_secret)
     _log.info("verbose: #{_cfg.verbose}")
 
     _repo = R2Repo.new(_cfg, _log)
@@ -580,7 +609,13 @@ begin
     # command 'delete' specified
     if ARGV.flags.delete?
       _result = _repo.delete(ARGV.flags.delete[0], ARGV.flags.delete[1])
-	  STDOUT.puts("Item #{ARGV.flags.delete[1]} deleted from domain #{ARGV.flags.delete[0]}")
+      STDOUT.puts("Item #{ARGV.flags.delete[1]} deleted from domain #{ARGV.flags.delete[0]}")
+    end
+
+   # command 'deletedomain' specified
+    if ARGV.flags.deletedomain?
+      _result = _repo.deletedomain(ARGV.flags.deletedomain)
+      STDOUT.puts("Domain #{ARGV.flags.deletedomain} deleted")
     end
 
     # command 'list' specified
