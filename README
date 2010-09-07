@@ -1,4 +1,30 @@
-Reg2Rep provides simple mechanism allowing you to register and un-register objects in centralized repository.
-It uses Amazon AWS SimpleDB by default.
 
-(c) 2010 Vanilladesk Ltd.
+
+ABOUT
+-----
+Reg2Rep provides simple mechanism allowing you to register and un-register
+objects in centralized repository. It uses Amazon AWS SimpleDB by default.
+
+COPYRIGHT AND LICENSE
+---------------------
+
+Copyright (c) 2010 VanillaDesk Ltd. http://www.vanilladesk.com
+
+See file LICENSE for details on license.
+
+HOW TO INSTALL
+--------------
+
+Simple - run install.sh
+
+Install script will 
+ a) download necessary archive from github reg2rep downloads
+ b) install reg2rep in /usr/local/lib
+ c) create example configuration file in /etc/reg2rep/example.conf
+ d) create init.d start/stop script
+ g) register init.d script in rc.d so MongoDB is started automatically
+
+HOW TO USE
+----------
+
+Follow documentation in MongoDB wiki http://www.mongodb.org/display/DOCS/Home.
