@@ -586,6 +586,8 @@ begin
       end
     end
 	
+	#---------------------------------
+	
     _log.info("******** reg2rep #{VER} started")
     _log.info("repository: #{_cfg.address}")
     _log.info("access id: #{_cfg.access_id}")
@@ -621,12 +623,12 @@ begin
     # command 'list' specified
     if ARGV.flags.list?
       _log.info("listing items in domain #{ARGV.flags.list[0]} showing #{ARGV.flags.list[1]}")
-      _result = _repo.list(ARGV.flags.list[0],ARGV.flags.query)
+      _result = _repo.list(ARGV.flags.list[0], ARGV.flags.query)
 	  
 	  if ARGV.flags.list[1] == "items"
-	    print_items(_result.fetch(:items),:one_per_line)
+	    print_items(_result.fetch(:items), :one_per_line)
 	  elsif ARGV.flags.list[1] == "items-flat"
-	    print_items(_result.fetch(:items),:single_line)
+	    print_items(_result.fetch(:items), :single_line)
 	  elsif ARGV.flags.list[1] == "table"
 	    print_table(rs2table(_result.fetch(:items)))
 	  else
