@@ -43,16 +43,16 @@ RETVAL=0
 #-------------------------------------------------
 
 function start() {
-  reg2rep.sh -c $R2R_CONFIG --add $R2R_DOMAIN $R2R_ITEM "$R2R_ATTRIBUTES"
+  reg2rep -c $R2R_CONFIG --add $R2R_DOMAIN $R2R_ITEM "$R2R_ATTRIBUTES"
 }
 
 function stop() {
-  reg2rep.sh -c $R2R_CONFIG --delete $R2R_DOMAIN $R2R_ITEM
+  reg2rep -c $R2R_CONFIG --delete $R2R_DOMAIN $R2R_ITEM
 }
 
 function status() {
   echo "Following servers are listed now:"
-  reg2rep.sh -c $R2R_CONFIG --list $R2R_DOMAIN hash
+  reg2rep -c $R2R_CONFIG --list $R2R_DOMAIN hash
 }
 
 #------------------------------------------------

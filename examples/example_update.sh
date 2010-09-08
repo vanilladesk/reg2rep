@@ -29,4 +29,4 @@ R2R_ITEM="$_ip"
 
 R2R_ATTRIBUTES="alive:$_now"
 
-reg2rep.sh -c $R2R_CONFIG --update $R2R_DOMAIN $R2R_ITEM "$R2R_ATTRIBUTES"
+reg2rep -c $R2R_CONFIG --update $R2R_DOMAIN $R2R_ITEM "$R2R_ATTRIBUTES"

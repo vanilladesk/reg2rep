@@ -86,7 +86,7 @@ sudo rm $inst_folder/install.sh
 sudo sed -i -e "/^r2r_install_path=/cr2r_install_path=$inst_folder" $inst_folder/reg2rep.sh
 
 # move existing symlink to uninstall folder
-[ -e $bin_folder/reg2rep ] || [ -h $bin_folder/reg2rep ] && mv $bin_folder/reg2rep $inst_folder/.uninstall
+[ -e $bin_folder/reg2rep ] && mv $bin_folder/reg2rep $inst_folder/.uninstall
 
 # create symlink in /usr/local/bin so reg2rep can be executed directly
 cecho "Creating symlink in $bin_folder." $C_GREEN
@@ -95,8 +95,9 @@ sudo cp -s $inst_folder/reg2rep.sh $bin_folder/reg2rep
 # create example config file
 cecho "Creating example configuration file in /etc/reg2rep." $C_GREEN
 [ -d /etc/reg2rep ] || sudo mkdir /etc/reg2rep
-sudo cp $inst_folder/examples/example.conf /etc/reg2rep/example$version.conf
+[ -e /etc/reg2rep/example.conf ] && sudo mv /etc/reg2rep/example.conf $inst_folder/.uninstall
+sudo cp $inst_folder/examples/example.conf /etc/reg2rep/example.conf
 
-echo "----------------------------------------"
-echo "Reg2Rep $version successfully installed."
-echo "----------------------------------------"
+cecho "----------------------------------------" $C_CYAN
+cecho "Reg2Rep $version successfully installed." $C_CYAN
+cecho "----------------------------------------" $C_CYAN
