@@ -76,7 +76,7 @@ fi
 
 # install required gems
 cecho "Installing required Ruby gems." $C_GREEN
-sudo gem install right_aws optiflag parseconfig
+sudo gem install right_aws optiflag parseconfig --no-rdoc --no-ri
 if [ $? -ne 0 ]; then
   cecho "Error: It is not possible to install necessary Ruby gems." $C_RED
   exit 1
