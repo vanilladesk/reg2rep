@@ -64,6 +64,24 @@ if [ ! `which sudo` ]; then
   exit 1
 fi
 
+if [ ! `which ruby` ]; then
+  cecho "Error: 'Ruby' is necessary to use Reg2Rep. Please, install Ruby first." $C_RED
+  exit 1
+fi
+
+if [ ! `which gem` ]; then
+  cecho "Error: 'Gem' is necessary to use Reg2Rep. Please, install rubygems first." $C_RED
+  exit 1
+fi
+
+# install required gems
+cecho "Installing required Ruby gems." $C_GREEN
+sudo gem install right_aws optiflag parseconfig
+if [ $? -ne 0 ]; then
+  cecho "Error: It is not possible to install necessary Ruby gems." $C_RED
+  exit 1
+fi
+
 # "install" reg2rep by copying all files to specified folder
 cecho "Creating install folder $inst_folder" $C_GREEN
 [ -d $inst_folder ] || sudo mkdir -p $inst_folder

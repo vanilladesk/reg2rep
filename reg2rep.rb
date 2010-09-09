@@ -22,6 +22,13 @@ ERR_PARAMS	= 2
 ERR_REPO	= 3
 
 begin
+  require 'rubygems'
+rescue LoadError => e
+  STDERR.puts("Reg2Rep requires the rubygems. Read http://docs.rubygems.org/read/chapter/3#page13 how to install them.")
+  exit ERR_START
+end
+
+begin
   require 'right_aws'
 rescue LoadError => e
   STDERR.puts("Reg2Rep requires the right_aws.  Run \'gem install right_aws\' and try again.")
@@ -407,7 +414,7 @@ class String
   #---------------------
   
   def to_secret(c = '*')
-    # ReplacesHides middle 80% of a string with specified character
+    # Replaces/Hides middle 80% of a string with specified character
 	
 	_s = self.dup
     _p = _s.length/10
@@ -485,21 +492,33 @@ def print_hash(rs, delim = '|')
 end
 
 #****************************************
-def print_items(rs, format = :one_per_line)
-  s = ""
-  rs.each do |row| 
+
+def print_items(rs, format = :list)
+  # format :list will print items each on separate line
+  # format :flat will create comma separated list of items
+  _s = ""
+  _r = 0
+  rs.each do |row|
+    _r = _r + 1
     row.each_pair do |item, attrs|
-	  s << item
-	  s << "," if format == :multiline
-	end
-	if format == :one_per_line
-	  STDOUT.puts(s)
-	  s = ""
-	end
+          _s << item
+		  
+		  # use pipe to separate attributes at one row
+          _s << "|" if row.length > 1
+		  
+        end
+        if format == :list
+          STDOUT.puts(_s)
+          _s = ""
+        end
+
+        # use comma to separate items in case format is :flat
+		_s << "," if format == :flat && rs.length > _r
   end
-  STDOUT.puts(s) if format == :flat
+  STDOUT.puts(_s) if format == :flat
 
 end
+
 
 #****************************************
 
@@ -544,7 +563,7 @@ begin
     # command 'add' specified?
     if ARGV.flags.add?
       # we expect domain, item and attributes to be specified
-      if not ARGV.flags.add.kind_of? Array || ARGV.flags.add.length < 3
+      if (not ARGV.flags.add.kind_of? Array) || ARGV.flags.add.length < 3
         STDERR.puts "Error: Arguments missing for command '--add'"
         exit ERR_PARAMS
       end
@@ -553,7 +572,7 @@ begin
     # command 'update' specified?
     if ARGV.flags.update?
       # we expect domain, item and attributes to be specified
-      if not ARGV.flags.update.kind_of? Array || ARGV.flags.update.length < 3
+      if (not ARGV.flags.update.kind_of? Array) || ARGV.flags.update.length < 3
         STDERR.puts "Error: Arguments missing for command '--update'"
         exit ERR_PARAMS
       end
@@ -562,7 +581,7 @@ begin
     # command 'delete' specified
     if ARGV.flags.delete?
       # we expect domain and item to be specified
-      if not ARGV.flags.delete.kind_of? Array || ARGV.flags.delete.length < 2
+      if (not ARGV.flags.delete.kind_of? Array) || ARGV.flags.delete.length < 2
         STDERR.puts "Error: Arguments missing for command '--delete'"
         exit ERR_PARAMS
       end
@@ -571,7 +590,7 @@ begin
    # command 'list' specified
     if ARGV.flags.list?
       # we expect domain to be specified
-      if not ARGV.flags.list.kind_of? Array || ARGV.flags.list.length < 2
+      if (not ARGV.flags.list.kind_of? Array) || ARGV.flags.list.length < 2
         STDERR.puts "Error: Arguments missing for command '--list'"
         exit ERR_PARAMS
       end
@@ -599,25 +618,25 @@ begin
     # command 'add' specified?
     if ARGV.flags.add?
       _result = _repo.add(ARGV.flags.add[0], ARGV.flags.add[1], ARGV.flags.add[2].to_h)
-      STDOUT.puts("Item #{ARGV.flags.add[1]} added to domain #{ARGV.flags.add[0]}")	  
+	  STDOUT.puts("Item #{ARGV.flags.add[1]} added to domain #{ARGV.flags.add[0]}")	if _cfg.verbose == 5
     end
 
      # command 'update' specified?
     if ARGV.flags.update?
       _result = _repo.update(ARGV.flags.update[0], ARGV.flags.update[1], ARGV.flags.update[2].to_h)
-      STDOUT.puts("Item #{ARGV.flags.update[1]} updated in domain #{ARGV.flags.update[0]}")	  
+      STDOUT.puts("Item #{ARGV.flags.update[1]} updated in domain #{ARGV.flags.update[0]}")	if _cfg.verbose == 5
     end
  
     # command 'delete' specified
     if ARGV.flags.delete?
       _result = _repo.delete(ARGV.flags.delete[0], ARGV.flags.delete[1])
-      STDOUT.puts("Item #{ARGV.flags.delete[1]} deleted from domain #{ARGV.flags.delete[0]}")
+      STDOUT.puts("Item #{ARGV.flags.delete[1]} deleted from domain #{ARGV.flags.delete[0]}") if _cfg.verbose == 5
     end
 
    # command 'deletedomain' specified
     if ARGV.flags.deletedomain?
       _result = _repo.deletedomain(ARGV.flags.deletedomain)
-      STDOUT.puts("Domain #{ARGV.flags.deletedomain} deleted")
+      STDOUT.puts("Domain #{ARGV.flags.deletedomain} deleted") if _cfg.verbose == 5
     end
 
     # command 'list' specified
@@ -626,9 +645,9 @@ begin
       _result = _repo.list(ARGV.flags.list[0], ARGV.flags.query)
 	  
 	  if ARGV.flags.list[1] == "items"
-	    print_items(_result.fetch(:items), :one_per_line)
+	    print_items(_result.fetch(:items), :list)
 	  elsif ARGV.flags.list[1] == "items-flat"
-	    print_items(_result.fetch(:items), :single_line)
+	    print_items(_result.fetch(:items), :flat)
 	  elsif ARGV.flags.list[1] == "table"
 	    print_table(rs2table(_result.fetch(:items)))
 	  else

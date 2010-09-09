@@ -20,6 +20,8 @@
 ### END INIT INFO
 #
 
+PATH=/usr/local/bin:$PATH
+
 # current timestamp
 _now="`date +%Y%m%d-%H%M%S`"
 
@@ -59,14 +61,19 @@ function status() {
 
 case "$1" in
   start)
+		echo -n "reg2rep is adding items to domain $R2R_DOMAIN: "
         start
 		RETVAL=$?
+		echo "$R2R_ITEM"
         ;;
   stop)
+		echo -n "reg2rep is removing items to domain $R2R_DOMAIN: "
         stop
 		RETVAL=$?
+		echo "$R2R_ITEM"
         ;;
   status)
+		echo -n "Items in domain $R2R_DOMAIN: "
         status
 		RETVAL=$?
         ;;
