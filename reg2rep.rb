@@ -524,6 +524,14 @@ end
 
 begin
   VER = '1.0.0'
+  GLB_CFG = '/etc/reg2rep/reg2rep.conf'
+  
+  # define configuration file to use
+  if ARGV.flags.config?
+    _cfile = ARGV.flags.config
+  elseif File::exists?( GLB_CFG )
+    _cfile = GLB_CFG
+  end
 
   # create hash containing commandline options, if there are any  
 
@@ -535,7 +543,7 @@ begin
   _cfg_params << [:flg_verbose, ARGV.flags.verbose] if ARGV.flags.verbose?
   _cfg_params << [:flg_query, ARGV.flags.query] if ARGV.flags.query?
 
-  _cfg = R2Config.new(ARGV.flags.config, Hash[*_cfg_params.flatten])
+  _cfg = R2Config.new(_cfile, Hash[*_cfg_params.flatten])
 
   begin
     if ARGV.flags.help?
@@ -608,6 +616,7 @@ begin
 	#---------------------------------
 	
     _log.info("******** reg2rep #{VER} started")
+    _log.info("configuration file: #{_cfile}")
     _log.info("repository: #{_cfg.address}")
     _log.info("access id: #{_cfg.access_id}")
     _log.info("secret key: " + _cfg.access_secret.to_secret)
