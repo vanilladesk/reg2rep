@@ -24,28 +24,35 @@ ERR_REPO	= 3
 begin
   require 'rubygems'
 rescue LoadError => e
-  STDERR.puts("Reg2Rep requires the rubygems. Read http://docs.rubygems.org/read/chapter/3#page13 how to install them.")
+  STDERR.puts("Library 'rubygems' required. Read http://docs.rubygems.org/read/chapter/3#page13 how to install it.")
+  exit ERR_START
+end
+
+begin
+  require 'logger'
+rescue LoadError => e
+  STDERR.puts("Library 'logger' not found.")
   exit ERR_START
 end
 
 begin
   require 'right_aws'
 rescue LoadError => e
-  STDERR.puts("Reg2Rep requires the right_aws.  Run \'gem install right_aws\' and try again.")
+  STDERR.puts("Library 'right_aws' not found.  Run \'gem install right_aws\' and try again.")
   exit ERR_START
 end
 
 begin
   require 'optiflag'
 rescue LoadError => e
-  STDERR.puts("Reg2Rep requires the optiflag.  Run \'gem install optiflag\' and try again.")
+  STDERR.puts("Library 'optiflag' not found.  Run \'gem install optiflag\' and try again.")
   exit ERR_START
 end
 
 begin
   require 'parseconfig'
 rescue LoadError => e
-  STDERR.puts("Reg2Rep requires the parseconfig.  Run \'gem install parseconfig\' and try again.")
+  STDERR.puts("Library 'parseconfig' not found.  Run \'gem install parseconfig\' and try again.")
   exit ERR_START
 end
 
