@@ -536,7 +536,7 @@ begin
   # define configuration file to use
   if ARGV.flags.config?
     _cfile = ARGV.flags.config
-  elseif File::exists?( GLB_CFG )
+  elsif File::exists?( GLB_CFG )
     _cfile = GLB_CFG
   end
 
