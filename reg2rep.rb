@@ -155,7 +155,7 @@ class R2Repo
       @last_domain = _new_domain
       @repo.create_domain(_new_domain) 
       begin
-        @repo.put_attributes(_new_domain, item, attributes, true)
+        _response = @repo.put_attributes(_new_domain, item, attributes, true)
         @logger.debug(_response)
         @logger.info("Item added")
       rescue Exception => e
@@ -542,15 +542,15 @@ begin
 
   # create hash containing commandline options, if there are any  
 
-  _cfg_params = []
-  _cfg_params << [:flg_address, ARGV.flags.address] if ARGV.flags.address?
-  _cfg_params << [:flg_id, ARGV.flags.id] if ARGV.flags.id?
-  _cfg_params << [:flg_secret, ARGV.flags.secret] if ARGV.flags.secret?
-  _cfg_params << [:flg_logfile, ARGV.flags.logfile] if ARGV.flags.logfile?
-  _cfg_params << [:flg_verbose, ARGV.flags.verbose] if ARGV.flags.verbose?
-  _cfg_params << [:flg_query, ARGV.flags.query] if ARGV.flags.query?
+  _cfg_params = {}
+  _cfg_params[:flg_address] = ARGV.flags.address if ARGV.flags.address?
+  _cfg_params[:flg_id] = ARGV.flags.id if ARGV.flags.id?
+  _cfg_params[:flg_secret] = ARGV.flags.secret if ARGV.flags.secret?
+  _cfg_params[:flg_logfile] = ARGV.flags.logfile if ARGV.flags.logfile?
+  _cfg_params[:flg_verbose] = ARGV.flags.verbose if ARGV.flags.verbose?
+  _cfg_params[:flg_query] = ARGV.flags.query if ARGV.flags.query?
 
-  _cfg = R2Config.new(_cfile, Hash[*_cfg_params.flatten])
+  _cfg = R2Config.new(_cfile, _cfg_params)
 
   begin
     if ARGV.flags.help?
@@ -634,7 +634,7 @@ begin
     # command 'add' specified?
     if ARGV.flags.add?
       _result = _repo.add(ARGV.flags.add[0], ARGV.flags.add[1], ARGV.flags.add[2].to_h)
-	  STDOUT.puts("Item #{ARGV.flags.add[1]} added to domain #{ARGV.flags.add[0]}")	if _cfg.verbose == 5
+	    STDOUT.puts("Item #{ARGV.flags.add[1]} added to domain #{ARGV.flags.add[0]}")	if _cfg.verbose == 5
     end
 
      # command 'update' specified?
