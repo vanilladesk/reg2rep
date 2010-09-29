@@ -224,7 +224,7 @@ class R2Repo
     begin
       _items = @repo.select(_query)
       @logger.debug(_items)
-      @logger.info("Items returned: #{_items.fetch(:items).length}")
+      @logger.info("Items returned: #{_items[:items].length}")
     rescue Exception => e
       # errors are logged in logfile
       @logger.error("Error occured: #{e.message}")
